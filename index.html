@@ -17,7 +17,7 @@
 #loginBox button:hover {background:#003366;}
 #errorMsg {color:red; font-weight:bold; margin-top:5px;}
 
-/* Report styles (hidden initially) */
+/* Report styles */
 #reportContent {display:none;}
 body {font-family: Arial; background:#f4f6f9; margin:0; padding:20px;}
 .header {display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:10px;}
@@ -34,6 +34,10 @@ th {background-color:#004080; color:white;}
 tr:nth-child(even) {background-color:#e6f0ff;}
 #message {text-align:center; margin-top:10px; color:red; font-weight:bold;}
 #totals {margin-top:10px; font-weight:bold; text-align:right;}
+
+/* Employee multi-select box */
+#employeeBox {display:none; border:1px solid #004080; background:#fff; padding:8px; border-radius:4px; max-height:200px; overflow:auto; margin-bottom:10px;}
+#employeeBox label {display:block; margin:2px 0;}
 </style>
 </head>
 <body>
@@ -84,6 +88,16 @@ tr:nth-child(even) {background-color:#e6f0ff;}
     <button onclick="applyFilter()">Search</button>
     <button onclick="exportExcel()">Excel Export</button>
     <button onclick="printTable()">Print</button>
+    <label>Employee Name:
+        <select id="employeeSelect" onchange="showEmployeeBox()">
+            <option value="">Select</option>
+        </select>
+    </label>
+</div>
+
+<div id="employeeBox">
+<b>Select Employees:</b><br>
+<!-- checkboxes auto-populated by JS -->
 </div>
 
 <div id="message"></div>
@@ -111,17 +125,62 @@ function checkLogin(){
     if(user==='dharan' && pwd==='dharan@dharan'){
         document.getElementById('loginScreen').style.display='none';
         document.getElementById('reportContent').style.display='block';
-        loadData(); // fetch report data after login
+        loadData();
     } else {
         document.getElementById('errorMsg').innerText="Invalid username or password!";
     }
 }
 
-/* --- Full existing report JS --- */
+/* --- Google Sheet data --- */
 const GS_URL = "https://script.google.com/macros/s/AKfycbwfMazlyPncIkILCZGiJTxKwuFSRwMFOBRqJtYMtA5LS0nMDX1RwoPLCxkZr2rBFouvng/exec";
 let allData = [];
 let lastFilter = {group: "", fromDate: "", toDate: ""};
 
+/* --- Employee list --- */
+const employeeNames = [
+  "Kaluram Chaudhary","Padam Rai","Hemant Rai","Hari Ram Pokharel",
+  "Kamal Rijal","Manish Jha","Prasant Rai","Tarani Chaudhary",
+  "Rajendra Jang Rana","Narayan Poudel","Pradip Dahal","Bishal Kulung",
+  "Rojina Karki","Saroj Nepal","Fanindra Acharya","Tejindra Rai",
+  "Aashnarayan Chaudhary","Ganesh Rai","Mahesh Dahal","Dipak Gurung",
+  "Nir Kumar Rai","Anil Kumar Mandal","Ram Kumar Yadab","Tilak B.K.",
+  "Suman Acharya"
+];
+
+/* Populate dropdown and checkboxes */
+window.addEventListener('DOMContentLoaded', ()=>{
+  const sel = document.getElementById("employeeSelect");
+  const box = document.getElementById("employeeBox");
+  employeeNames.forEach(name=>{
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+
+      const lbl = document.createElement("label");
+      const chk = document.createElement("input");
+      chk.type="checkbox";
+      chk.value=name;
+      lbl.appendChild(chk);
+      lbl.appendChild(document.createTextNode(" "+name));
+      box.appendChild(lbl);
+  });
+});
+
+/* Show/hide employee box */
+function showEmployeeBox(){
+    const sel = document.getElementById("employeeSelect").value;
+    document.getElementById("employeeBox").style.display = sel ? "block" : "none";
+}
+
+/* Get selected employees */
+function getSelectedEmployees(){
+    return [...document.querySelectorAll("#employeeBox input:checked")]
+           .map(e => e.value)
+           .join(", ");
+}
+
+/* --- Google Sheet functions --- */
 function parseSheetDate(dateStr) {
     if(!dateStr) return null;
     const parts = dateStr.trim().split(/[./-]/);
@@ -201,7 +260,6 @@ function applyFilter(){
     }
 
     lastFilter = {group, fromDate: from, toDate: to};
-
     const fromD=parseInputDate(from);
     const toD=parseInputDate(to);
 
@@ -240,7 +298,13 @@ function printTable(){
         return;
     }
 
-    const newWin=window.open("");
+    // Get selected employees
+    const employees = getSelectedEmployees();
+    const group = lastFilter.group || "All Groups";
+
+    const preparedBy = employees ? employees : group; // Checkbox empty भए group नाम देखाउने
+
+    const newWin = window.open("");
     newWin.document.write("<html><head><title>Print</title>");
     newWin.document.write("<style>@page{size:landscape;} table{width:100%;border-collapse:collapse; font-size:10px;} th,td{border:1px solid #004080;padding:4px; text-align:center;} th{background:#004080;color:white;} tr:nth-child(even){background:#e6f0ff;}</style>");
     newWin.document.write("</head><body>");
@@ -251,28 +315,22 @@ function printTable(){
     newWin.document.write("<h1 style='color:#004080; font-size:14px;'>Nepal Electricity Authority</h1>");
     newWin.document.write("<h2 style='color:#004080; font-size:12px;'>Dharan Distribution Center</h2>");
     newWin.document.write("<h3 style='color:#004080; font-size:12px;'>Reasealing Report</h3>");
-    
     if(lastFilter.group || lastFilter.fromDate || lastFilter.toDate){
         newWin.document.write("<p style='font-weight:bold; font-size:11px;'>");
-        if(lastFilter.group) newWin.document.write("Group: "+lastFilter.group+" ");
-        else newWin.document.write("Group: All Groups ");
-        if(lastFilter.fromDate) newWin.document.write("From: "+lastFilter.fromDate+" ");
-        if(lastFilter.toDate) newWin.document.write("To: "+lastFilter.toDate);
+        newWin.document.write("Group: "+group+" From: "+lastFilter.fromDate+" To: "+lastFilter.toDate);
         newWin.document.write("</p>");
     }
     newWin.document.write("</div>");
     
     // Table + totals
     newWin.document.write(document.getElementById("dataTable").outerHTML);
-    
-    // Centered totals
     newWin.document.write("<p style='text-align:center; font-weight:bold; font-size:11px;'>"+document.getElementById("totals").innerHTML+"</p>");
 
-    // Signature section with different alignment
+   
+    // Signature section
     newWin.document.write("<br><br>");
-    let preparedByText = lastFilter.group ? lastFilter.group : "All Groups";
     newWin.document.write("<div style='display:flex; justify-content:space-between; font-size:10px;'>");
-    newWin.document.write("<span>Prepared by: "+preparedByText+"</span>");
+    newWin.document.write("<span>Prepared by: "+preparedBy+"</span>");
     newWin.document.write("<span style='text-align:center;'>Updated by: ____________________</span>");
     newWin.document.write("<span style='text-align:right;'>Approved by: ____________________</span>");
     newWin.document.write("</div>");
@@ -281,7 +339,8 @@ function printTable(){
     newWin.document.close();
     newWin.print();
 }
-</script>
 
+
+</script>
 </body>
 </html>
