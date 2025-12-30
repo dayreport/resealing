@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reasealing Report</title>
+<style>
+/* Login styles */
+#loginScreen {
+    display:flex; justify-content:center; align-items:center; height:100vh; background:#f4f6f9;
+}
+#loginBox {
+    background:white; padding:20px; border:1px solid #004080; border-radius:8px; text-align:center; width:300px;
+}
+#loginBox input {width:90%; padding:6px; margin:5px 0; border:1px solid #004080; border-radius:4px;}
+#loginBox button {width:95%; padding:6px; margin-top:10px; background:#004080; color:white; border:none; border-radius:4px; cursor:pointer;}
+#loginBox button:hover {background:#003366;}
+#errorMsg {color:red; font-weight:bold; margin-top:5px;}
+
+/* Report styles (hidden initially) */
+#reportContent {display:none;}
+body {font-family: Arial; background:#f4f6f9; margin:0; padding:20px;}
+.header {display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:10px;}
+.header img {height:80px;}
+.header-text {text-align:center;}
+.header-text h1,h2,h3 {margin:2px 0; color:#004080;}
+.filter-bar {display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:10px;}
+.filter-bar select, .filter-bar input {padding:6px; border-radius:4px; border:1px solid #004080;}
+button {padding:6px 12px; background:#004080; color:white; border:none; cursor:pointer; border-radius:4px;}
+button:hover {background:#003366;}
+table {width:100%; border-collapse:collapse; margin-top:10px; font-size:12px;}
+th, td {border:1px solid #004080; padding:6px; text-align:center;}
+th {background-color:#004080; color:white;}
+tr:nth-child(even) {background-color:#e6f0ff;}
+#message {text-align:center; margin-top:10px; color:red; font-weight:bold;}
+#totals {margin-top:10px; font-weight:bold; text-align:right;}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="loginScreen">
+    <div id="loginBox">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username"><br>
+        <input type="password" id="password" placeholder="Password"><br>
+        <button onclick="checkLogin()">Login</button>
+        <div id="errorMsg"></div>
+    </div>
+</div>
+
+<!-- Report Content -->
+<div id="reportContent">
+<div class="header">
+    <img src="risil.png" alt="Logo">
+    <div class="header-text">
+        <h1>Nepal Electricity Authority</h1>
+        <h2>Dharan Distribution Center</h2>
+        <h3>Reasealing Report</h3>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <label>Group:
+        <select id="groupFilter">
+            <option value="">All Groups</option>
+            <option value="Group A">Group A</option>
+            <option value="Group B">Group B</option>
+            <option value="Group C">Group C</option>
+            <option value="Group D">Group D</option>
+            <option value="Group E">Group E</option>
+            <option value="Group F">Group F</option>
+            <option value="Group G">Group G</option>
+            <option value="Group H">Group H</option>
+            <option value="Group I">Group I</option>
+            <option value="Group J">Group J</option>
+            <option value="Group K">Group K</option>
+            <option value="Group L">Group L</option>
+            <option value="Group M">Group M</option>
+        </select>
+    </label>
+    <label>From Date: <input type="date" id="fromDate"></label>
+    <label>To Date: <input type="date" id="toDate"></label>
+    <button onclick="applyFilter()">Search</button>
+    <button onclick="exportExcel()">Excel Export</button>
+    <button onclick="printTable()">Print</button>
+</div>
+
+<div id="message"></div>
+<div id="totals"></div>
+
+<table id="dataTable">
+    <thead>
+        <tr>
+            <th>SCNO</th><th>ID</th><th>NAME</th><th>CATOGARY</th><th>LOAD</th>
+            <th>METER_NO</th><th>BOX_SEAL</th><th>READING_SEAL</th><th>TERMINAL_SEAL</th>
+            <th>NO_OF_SEAL</th><th>METER_BOX_MCB</th><th>LOAD_INCREASE_AMP</th>
+            <th>READING</th><th>CONSUMER_PHONE</th><th>RESEALING_GROUP</th>
+            <th>DATE</th><th>REMARKS</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+</div>
+
+<script>
+/* Login check */
+function checkLogin(){
+    const user = document.getElementById('username').value.trim();
+    const pwd = document.getElementById('password').value.trim();
+    if(user==='dharan' && pwd==='dharan@dharan'){
+        document.getElementById('loginScreen').style.display='none';
+        document.getElementById('reportContent').style.display='block';
+        loadData(); // fetch report data after login
+    } else {
+        document.getElementById('errorMsg').innerText="Invalid username or password!";
+    }
+}
+
+/* --- Full existing report JS --- */
+const GS_URL = "https://script.google.com/macros/s/AKfycbwfMazlyPncIkILCZGiJTxKwuFSRwMFOBRqJtYMtA5LS0nMDX1RwoPLCxkZr2rBFouvng/exec";
+let allData = [];
+let lastFilter = {group: "", fromDate: "", toDate: ""};
+
+function parseSheetDate(dateStr) {
+    if(!dateStr) return null;
+    const parts = dateStr.trim().split(/[./-]/);
+    if(parts.length!==3) return new Date(dateStr);
+    let month=parseInt(parts[0],10), day=parseInt(parts[1],10), year=parseInt(parts[2],10);
+    if(month>12){ [day, month]=[month, day]; } 
+    return new Date(year, month-1, day);
+}
+
+function parseInputDate(str){
+    if(!str) return null;
+    const parts=str.split('-');
+    if(parts.length!==3) return null;
+    return new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10));
+}
+
+function formatDateYMD(date){
+    if(!date) return "";
+    const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,'0'), d=String(date.getDate()).padStart(2,'0');
+    return `${y}-${m}-${d}`;
+}
+
+function formatDateForTable(str){ return formatDateYMD(parseSheetDate(str)); }
+
+async function loadData(){
+    try{
+        const res=await fetch(GS_URL);
+        if(!res.ok) throw new Error("Network error");
+        const data=await res.json();
+        allData=data||[];
+    }catch(e){
+        console.error(e);
+        document.getElementById("message").innerText="Error fetching data!";
+    }
+}
+
+function renderTable(data){
+    const tbody=document.querySelector("#dataTable tbody");
+    tbody.innerHTML="";
+    data.forEach(r=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td>${r.SCNO||""}</td><td>${r.ID||""}</td><td>${r.NAME||""}</td>
+        <td>${r.CATOGARY||""}</td><td>${r.LOAD||""}</td><td>${r.METER_NO||""}</td>
+        <td>${r.BOX_SEAL||""}</td><td>${r.READING_SEAL||""}</td><td>${r.TERMINAL_SEAL||""}</td>
+        <td>${r.NO_OF_SEAL||""}</td><td>${r.METER_BOX_MCB||""}</td><td>${r.LOAD_INCREASE_AMP||""}</td>
+        <td>${r.READING||""}</td><td>${r.CONSUMER_PHONE||""}</td><td>${r.RESEALING_GROUP||""}</td>
+        <td>${formatDateForTable(r.DATE)}</td><td>${r.REMARKS||""}</td>`;
+        tbody.appendChild(tr);
+    });
+    updateTotals(data);
+}
+
+function updateTotals(data){
+    let totalResealing = data.length;
+    const amps = ["16Amp","20Amp","25Amp","32Amp","40Amp"];
+    const colors = {"16Amp":"red","20Amp":"blue","25Amp":"green","32Amp":"orange","40Amp":"purple"};
+    let ampCounts = {};
+    amps.forEach(a=> ampCounts[a]=0);
+    data.forEach(r=>{
+        if(r.LOAD_INCREASE_AMP && amps.includes(r.LOAD_INCREASE_AMP.trim())){
+            ampCounts[r.LOAD_INCREASE_AMP.trim()]++;
+        }
+    });
+    let ampHtml = amps.map(a=>`<span style="color:${colors[a]}">(${a}=${ampCounts[a]})</span>`).join(" + ");
+    let totalAmp = Object.values(ampCounts).reduce((a,b)=>a+b,0);
+    document.getElementById("totals").innerHTML = `Total Resealing: ${totalResealing} | Load_Incraese: ${ampHtml} = <b>${totalAmp}</b>`;
+}
+
+function applyFilter(){
+    const group=document.getElementById("groupFilter").value;
+    const from=document.getElementById("fromDate").value;
+    const to=document.getElementById("toDate").value;
+
+    if(!from || !to){
+        alert("पहिला From Date र To Date select गर्नुहोस्");
+        return;
+    }
+
+    lastFilter = {group, fromDate: from, toDate: to};
+
+    const fromD=parseInputDate(from);
+    const toD=parseInputDate(to);
+
+    const filtered=allData.filter(r=>{
+        const d=parseSheetDate(r.DATE);
+        if(!d) return false;
+        if(group && r.RESEALING_GROUP?.trim()!==group) return false;
+        let valid=true;
+        valid = valid && (formatDateYMD(d)>=formatDateYMD(fromD));
+        valid = valid && (formatDateYMD(d)<=formatDateYMD(toD));
+        return valid;
+    });
+
+    document.getElementById("message").innerText = filtered.length ? "" : "No records found!";
+    renderTable(filtered);
+}
+
+function exportExcel(){
+    const from=document.getElementById("fromDate").value;
+    const to=document.getElementById("toDate").value;
+
+    if(!from || !to){
+        alert("पहिला From Date र To Date select गर्नुहोस्");
+        return;
+    }
+
+    const a=document.createElement('a');
+    a.href='data:application/vnd.ms-excel,' + encodeURIComponent(document.getElementById("dataTable").outerHTML);
+    a.download='Reasealing_Report.xls';
+    a.click();
+}
+
+function printTable(){
+    if(!lastFilter.fromDate || !lastFilter.toDate){
+        alert("पहिला From Date र To Date select गर्नुहोस्");
+        return;
+    }
+
+    const newWin=window.open("");
+    newWin.document.write("<html><head><title>Print</title>");
+    newWin.document.write("<style>@page{size:landscape;} table{width:100%;border-collapse:collapse; font-size:10px;} th,td{border:1px solid #004080;padding:4px; text-align:center;} th{background:#004080;color:white;} tr:nth-child(even){background:#e6f0ff;}</style>");
+    newWin.document.write("</head><body>");
+    
+    // Header
+    newWin.document.write("<div style='text-align:center; font-size:12px;'>");
+    newWin.document.write("<img src='risil.png' style='height:60px;'><br>");
+    newWin.document.write("<h1 style='color:#004080; font-size:14px;'>Nepal Electricity Authority</h1>");
+    newWin.document.write("<h2 style='color:#004080; font-size:12px;'>Dharan Distribution Center</h2>");
+    newWin.document.write("<h3 style='color:#004080; font-size:12px;'>Reasealing Report</h3>");
+    
+    if(lastFilter.group || lastFilter.fromDate || lastFilter.toDate){
+        newWin.document.write("<p style='font-weight:bold; font-size:11px;'>");
+        if(lastFilter.group) newWin.document.write("Group: "+lastFilter.group+" ");
+        else newWin.document.write("Group: All Groups ");
+        if(lastFilter.fromDate) newWin.document.write("From: "+lastFilter.fromDate+" ");
+        if(lastFilter.toDate) newWin.document.write("To: "+lastFilter.toDate);
+        newWin.document.write("</p>");
+    }
+    newWin.document.write("</div>");
+    
+    // Table + totals
+    newWin.document.write(document.getElementById("dataTable").outerHTML);
+    
+    // Centered totals
+    newWin.document.write("<p style='text-align:center; font-weight:bold; font-size:11px;'>"+document.getElementById("totals").innerHTML+"</p>");
+
+    // Signature section with different alignment
+    newWin.document.write("<br><br>");
+    let preparedByText = lastFilter.group ? lastFilter.group : "All Groups";
+    newWin.document.write("<div style='display:flex; justify-content:space-between; font-size:10px;'>");
+    newWin.document.write("<span>Prepared by: "+preparedByText+"</span>");
+    newWin.document.write("<span style='text-align:center;'>Updated by: ____________________</span>");
+    newWin.document.write("<span style='text-align:right;'>Approved by: ____________________</span>");
+    newWin.document.write("</div>");
+
+    newWin.document.write("</body></html>");
+    newWin.document.close();
+    newWin.print();
+}
+</script>
+
+</body>
+</html>
