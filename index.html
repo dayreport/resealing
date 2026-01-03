@@ -29,9 +29,9 @@ body {font-family: Arial; background:#f4f6f9; margin:0; padding:20px;}
 button {padding:6px 12px; background:#004080; color:white; border:none; cursor:pointer; border-radius:4px;}
 button:hover {background:#003366;}
 table {width:100%; border-collapse:collapse; margin-top:10px; font-size:12px;}
-th, td {border:1px solid #004080; padding:6px; text-align:center;}
-th {background-color:#004080; color:white;}
-tr:nth-child(even) {background-color:#e6f0ff;}
+th, td {border:1px solid #4090e0; padding:6px; text-align:center;}
+th {background-color:#0c559e; color:rgb(247, 237, 237);}
+tr:nth-child(even) {background-color:rgb(241, 236, 236)39);}
 #message {text-align:center; margin-top:10px; color:red; font-weight:bold;}
 #totals {margin-top:10px; font-weight:bold; text-align:right;}
 
@@ -106,7 +106,7 @@ tr:nth-child(even) {background-color:#e6f0ff;}
 <table id="dataTable">
     <thead>
         <tr>
-            <th>SCNO</th><th>ID</th><th>NAME</th><th>CATOGARY</th><th>LOAD</th>
+            <th>SCNO</th><th>ID</th><th>NAME</th><th>CATEGORY</th><th>LOAD</th>
             <th>METER_NO</th><th>BOX_SEAL</th><th>READING_SEAL</th><th>TERMINAL_SEAL</th>
             <th>NO_OF_SEAL</th><th>METER_BOX_MCB</th><th>LOAD_INCREASE_AMP</th>
             <th>READING</th><th>CONSUMER_PHONE</th><th>RESEALING_GROUP</th>
@@ -306,7 +306,35 @@ function printTable(){
 
     const newWin = window.open("");
     newWin.document.write("<html><head><title>Print</title>");
-    newWin.document.write("<style>@page{size:landscape;} table{width:100%;border-collapse:collapse; font-size:10px;} th,td{border:1px solid #004080;padding:4px; text-align:center;} th{background:#004080;color:white;} tr:nth-child(even){background:#e6f0ff;}</style>");
+    newWin.document.write(`
+<style>
+@page{size:landscape;}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:10px;
+}
+
+th, td{
+    border:1px solid #004080;
+    padding:4px;
+    text-align:center;
+}
+
+/* ONLY PRINT HEADER CHANGE */
+th{
+    background:#4090e0;   /* dark */
+    color:#000;        /* black text */
+    font-weight:bold;  /* bold */
+}
+
+tr:nth-child(even){
+    background:#e6f0ff;
+}
+</style>
+`);
+
     newWin.document.write("</head><body>");
     
     // Header
