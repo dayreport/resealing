@@ -224,14 +224,34 @@ function renderTable(data){
         const tr=document.createElement("tr");
         tr.innerHTML=`<td>${r.SCNO||""}</td><td>${r.ID||""}</td><td>${r.NAME||""}</td>
         <td>${r.CATOGARY||""}</td><td>${r.LOAD||""}</td><td>${r.METER_NO||""}</td>
-        <td>${r.BOX_SEAL||""}</td><td>${r.READING_SEAL||""}</td><td>${r.TERMINAL_SEAL||""}</td>
-        <td>${r.NO_OF_SEAL||""}</td><td>${r.METER_BOX_MCB||""}</td><td>${r.LOAD_INCREASE_AMP||""}</td>
-        <td>${r.READING||""}</td><td>${r.CONSUMER_PHONE||""}</td><td>${r.RESEALING_GROUP||""}</td>
+
+        <td>${
+            r.BOX_SEAL === undefined || r.BOX_SEAL === null ? "" :
+            `<b style="color:${String(r.BOX_SEAL).toUpperCase()==="FALSE" ? "red" : "green"}">
+            ${String(r.BOX_SEAL).toUpperCase()}</b>`
+        }</td>
+
+        <td>${
+            r.READING_SEAL === undefined || r.READING_SEAL === null ? "" :
+            `<b style="color:${String(r.READING_SEAL).toUpperCase()==="FALSE" ? "red" : "green"}">
+            ${String(r.READING_SEAL).toUpperCase()}</b>`
+        }</td>
+
+        <td>${
+            r.TERMINAL_SEAL === undefined || r.TERMINAL_SEAL === null ? "" :
+            `<b style="color:${String(r.TERMINAL_SEAL).toUpperCase()==="FALSE" ? "red" : "green"}">
+            ${String(r.TERMINAL_SEAL).toUpperCase()}</b>`
+        }</td>
+
+        <td>${r.NO_OF_SEAL||""}</td><td>${r.METER_BOX_MCB||""}</td>
+        <td>${r.LOAD_INCREASE_AMP||""}</td><td>${r.READING||""}</td>
+        <td>${r.CONSUMER_PHONE||""}</td><td>${r.RESEALING_GROUP||""}</td>
         <td>${formatDateForTable(r.DATE)}</td><td>${r.REMARKS||""}</td>`;
         tbody.appendChild(tr);
     });
     updateTotals(data);
 }
+
 
 function updateTotals(data){
     let totalResealing = data.length;
